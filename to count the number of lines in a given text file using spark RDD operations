@@ -1,0 +1,25 @@
+from pyspark.sql import SparkSession
+
+
+spark = SparkSession.builder \
+    .appName("LineCount") \
+    .master("local[*]") \
+    .getOrCreate()
+
+sc = spark.sparkContext
+
+try:
+    lines_rdd = sc.textFile("sample.txt")
+    print("Successfully loaded 'sample.txt' for line counting.")
+except Exception as e:
+    print(f"Error loading sample.txt: {e}. Please ensure 'sample.txt' is uploaded or provide a path to your text file.")
+    # Fallback to a dummy RDD for demonstration if file not found
+    lines_rdd = sc.parallelize(["This is line one.", "This is line two.", "And this is the third line."])
+
+# Count the number of lines using RDD operations
+line_count = lines_rdd.count()
+
+# Print the result
+print(f"Total number of lines in the file: {line_count}")
+
+spark.stop()
