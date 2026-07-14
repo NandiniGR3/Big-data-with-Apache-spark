@@ -1,0 +1,76 @@
+# ==========================================================
+# PROGRAM 5
+# Spark SQL - SELECT, WHERE, GROUP BY
+#=========================================================
+
+from pyspark.sql import SparkSession
+
+# ----------------------------------------------------------
+# Create Spark Session
+# ----------------------------------------------------------
+spark = SparkSession.builder \
+    .appName("Spark SQL Operations") \
+    .master("local[*]") \
+    .getOrCreate()
+
+# ----------------------------------------------------------
+# Read CSV File
+# ----------------------------------------------------------
+df = spark.read.csv(
+    "employees.csv",
+    header=True,
+    inferSchema=True
+)
+
+# Display Dataset
+print("\nEmployee Dataset")
+df.show()
+
+# ----------------------------------------------------------
+# Create Temporary SQL View
+# ----------------------------------------------------------
+df.createOrReplaceTempView("employees")
+
+# ----------------------------------------------------------
+# SELECT Query
+# ----------------------------------------------------------
+print("\nSELECT Name, Salary")
+
+result1 = spark.sql("""
+SELECT Name, Salary
+FROM employees
+""")
+
+result1.show()
+
+# ----------------------------------------------------------
+# WHERE Query
+# ----------------------------------------------------------
+print("\nEmployees with Salary > 50000")
+
+result2 = spark.sql("""
+SELECT *
+FROM employees
+WHERE Salary > 50000
+""")
+
+result2.show()
+
+# ----------------------------------------------------------
+# GROUP BY Query
+# ----------------------------------------------------------
+print("\nAverage Salary Department-wise")
+
+result3 = spark.sql("""
+SELECT Department,
+AVG(Salary) AS Average_Salary
+FROM employees
+GROUP BY Department
+""")
+
+result3.show()
+
+# ----------------------------------------------------------
+# Stop Spark
+# ----------------------------------------------------------
+spark.stop()
