@@ -1,0 +1,80 @@
+# ==========================================================
+# PROGRAM 3
+# Matrix-Vector Multiplication using Spark RDD
+# Input: Words from sample.txt
+#==========================================================
+
+from pyspark.sql import SparkSession
+
+# ----------------------------------------------------------
+# Create Spark Session
+# ----------------------------------------------------------
+spark = SparkSession.builder \
+    .appName("Matrix Vector Multiplication") \
+    .master("local[*]") \
+    .getOrCreate()
+
+sc = spark.sparkContext
+
+# ----------------------------------------------------------
+# Read sample.txt
+# ----------------------------------------------------------
+rdd = sc.textFile("sample.txt")
+
+# Convert each word to its length
+matrix = rdd.map(lambda line: [len(word) for word in line.split()]).collect()
+
+# ----------------------------------------------------------
+# Make all rows equal length (Padding with 0)
+# ----------------------------------------------------------
+max_cols = max(len(row) for row in matrix)
+
+matrix = [row + [0] * (max_cols - len(row)) for row in matrix]
+
+# ----------------------------------------------------------
+# Create Vector
+# ----------------------------------------------------------
+vector = list(range(1, max_cols + 1))
+
+# ----------------------------------------------------------
+# Create Matrix RDD with Row Index
+# ----------------------------------------------------------
+matrix_rdd = sc.parallelize(list(enumerate(matrix)))
+
+# ----------------------------------------------------------
+# Matrix × Vector Multiplication
+# ----------------------------------------------------------
+result = (
+    matrix_rdd
+    .flatMap(
+        lambda row: [
+            (row[0], row[1][i] * vector[i])
+            for i in range(len(vector))
+        ]
+    )
+    .reduceByKey(lambda a, b: a + b)
+)
+
+# ----------------------------------------------------------
+# Display Input Matrix
+# ----------------------------------------------------------
+print("\nMatrix (Word Lengths)\n")
+
+for row in matrix:
+    print(row)
+
+print("\nVector\n")
+print(vector)
+
+# ----------------------------------------------------------
+# Display Result
+# ----------------------------------------------------------
+print("\nMatrix × Vector Result\n")
+
+for row, value in result.collect():
+    print(f"Row {row + 1} = {value}")
+
+# ----------------------------------------------------------
+# Stop Spark
+# ----------------------------------------------------------
+spark.stop()
