@@ -1,0 +1,118 @@
+# ==========================================================
+# PROGRAM 10
+# Service Quality Analysis using MapReduce (Spark RDD)
+#=========================================================
+
+from pyspark.sql import SparkSession
+
+# ----------------------------------------------------------
+# Create Spark Session
+# ----------------------------------------------------------
+spark = SparkSession.builder \
+    .appName("Service Quality Analysis using MapReduce") \
+    .master("local[*]") \
+    .getOrCreate()
+
+sc = spark.sparkContext
+
+# ----------------------------------------------------------
+# Read CSV File
+# ----------------------------------------------------------
+rdd = sc.textFile("service_quality.csv")
+
+# Remove Header
+header = rdd.first()
+data = rdd.filter(lambda row: row != header)
+
+# Split each record
+records = data.map(lambda row: row.split(","))
+
+# ==========================================================
+# Display Dataset
+# ==========================================================
+
+print("\n========== INPUT DATA ==========\n")
+
+for record in records.collect():
+    print(record)
+
+# ==========================================================
+# MAP PHASE
+# Create (Service, (Rating,1))
+# ==========================================================
+
+mapped = records.map(
+    lambda x: (x[1], (int(x[2]), 1))
+)
+
+print("\n========== MAP OUTPUT ==========\n")
+
+for item in mapped.collect():
+    print(item)
+
+# ==========================================================
+# REDUCE PHASE
+# Calculate Total Rating and Total Count
+# ==========================================================
+
+reduced = mapped.reduceByKey(
+    lambda a, b: (a[0] + b[0], a[1] + b[1])
+)
+
+print("\n========== REDUCE OUTPUT ==========\n")
+
+for item in reduced.collect():
+    print(item)
+
+# ==========================================================
+# FINAL RESULT
+# Calculate Average Rating
+# ==========================================================
+
+average_rating = reduced.mapValues(
+    lambda x: round(x[0] / x[1], 2)
+)
+
+print("\n========== AVERAGE SERVICE RATING ==========\n")
+
+for service, avg in average_rating.collect():
+    print(f"{service:<15} Average Rating = {avg}")
+
+# ==========================================================
+# EXTRA ANALYSIS
+# Count Feedback for Each Service
+# ==========================================================
+
+feedback_count = records.map(
+    lambda x: (x[1], 1)
+).reduceByKey(
+    lambda a, b: a + b
+)
+
+print("\n========== TOTAL FEEDBACK ==========\n")
+
+for service, count in feedback_count.collect():
+    print(f"{service:<15} Feedback = {count}")
+
+# ==========================================================
+# EXTRA ANALYSIS
+# Count Excellent Ratings (5-Star)
+# ==========================================================
+
+excellent = records.filter(
+    lambda x: int(x[2]) == 5
+).map(
+    lambda x: (x[1], 1)
+).reduceByKey(
+    lambda a, b: a + b
+)
+
+print("\n========== EXCELLENT (5-STAR) RATINGS ==========\n")
+
+for service, count in excellent.collect():
+    print(f"{service:<15} 5-Star Ratings = {count}")
+
+# ----------------------------------------------------------
+# Stop Spark
+# ----------------------------------------------------------
+spark.stop()
