@@ -1,0 +1,74 @@
+# ==========================================================
+# PROGRAM 7
+# Demonstration of Caching and Lazy Evaluation in Spark #==========================================================
+
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import col
+
+# ----------------------------------------------------------
+# Create Spark Session
+# ----------------------------------------------------------
+spark = SparkSession.builder \
+    .appName("Caching and Lazy Evaluation") \
+    .master("local[*]") \
+    .getOrCreate()
+
+# ----------------------------------------------------------
+# Read CSV File
+# ----------------------------------------------------------
+df = spark.read.csv(
+    "employees.csv",
+    header=True,
+    inferSchema=True
+)
+
+print("\nEmployee Dataset")
+df.show()
+
+# ----------------------------------------------------------
+# Lazy Transformation
+# ----------------------------------------------------------
+high_salary = df.filter(col("Salary") > 40000)
+
+print("\nTransformation Created (Lazy Evaluation)")
+print("No computation has happened yet!")
+
+# ----------------------------------------------------------
+# Cache the DataFrame
+# ----------------------------------------------------------
+high_salary.cache()
+
+print("\nDataFrame Cached Successfully.")
+
+# ----------------------------------------------------------
+# Action 1
+# ----------------------------------------------------------
+print("\nEmployees with Salary > 40000")
+
+high_salary.show()
+
+# ----------------------------------------------------------
+# Action 2
+# ----------------------------------------------------------
+print("\nNumber of Employees with Salary > 40000")
+
+print("Count =", high_salary.count())
+
+# ----------------------------------------------------------
+# Action 3
+# ----------------------------------------------------------
+print("\nEmployee Names")
+
+high_salary.select("Name").show()
+
+# ----------------------------------------------------------
+# Remove Cache
+# ----------------------------------------------------------
+high_salary.unpersist()
+
+print("\nCache Cleared Successfully.")
+
+# ----------------------------------------------------------
+# Stop Spark
+# ----------------------------------------------------------
+spark.stop()
