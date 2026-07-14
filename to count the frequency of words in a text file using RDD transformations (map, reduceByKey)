@@ -1,73 +1,46 @@
 import re
-from pyspark.sql import SparkSession
-from nltk.corpus import stopwords
 import nltk
-import pandas as pd # Import pandas here
+from nltk.corpus import stopwords
+from pyspark.sql import SparkSession
 
-try:
-    stopwords.words('english')
-except LookupError:
-    nltk.download('stopwords')
+# Download stopwords (only once)
+nltk.download("stopwords")
 
 # Create Spark Session
-spark = SparkSession.builder \
-    .appName("WordFrequencyWithNLP") \
-    .master("local[*]") \
+spark = (
+    SparkSession.builder
+    .appName("Word Frequency")
+    .master("local[*]")
     .getOrCreate()
+)
 
 sc = spark.sparkContext
 
-try:
-    rdd = sc.textFile("sample.txt")
-except Exception as e:
-    print(f"Error loading sample.txt: {e}. Please ensure 'sample.txt' is uploaded or provide a path to your text file.")
-    # Fallback to a dummy RDD for demonstration if file not found
-    rdd = sc.parallelize(["This is a sample text file.", "It contains some words for demonstration."])
+# Load external text file
+rdd = sc.textFile("sample.txt")
 
-# Get English stopwords
-english_stopwords = set(stopwords.words('english'))
+# English stopwords
+stop_words = set(stopwords.words("english"))
 
-# -------------------------
-# NLP Preprocessing Steps
-# -------------------------
-
-# Convert text to lowercase
-rdd_lower = rdd.map(lambda x: x.lower())
-
-# Remove punctuation and special characters
-rdd_clean = rdd_lower.map(
-    lambda x: re.sub(r'[^a-zA-Z\s]', '', x) # Keep only letters and spaces
+# Text preprocessing
+words = (
+    rdd.map(lambda line: line.lower())
+       .map(lambda line: re.sub(r"[^a-zA-Z\s]", "", line))
+       .flatMap(lambda line: line.split())
+       .filter(lambda word: word not in stop_words and word != "")
 )
 
-# Remove extra spaces and split lines into words
-words = rdd_clean.flatMap(lambda x: x.strip().split(" "))
-
-# Remove empty words and filter out stopwords
-words_filtered = words.filter(lambda x: x.strip() != "" and x not in english_stopwords)
-
-# -------------------------
-# Word Frequency Count
-# -------------------------
-
-word_count = words_filtered.map(
-    lambda word: (word, 1)
-).reduceByKey(
-    lambda a, b: a + b
+# Count word frequency
+word_count = (
+    words.map(lambda word: (word, 1))
+         .reduceByKey(lambda a, b: a + b)
+         .sortBy(lambda x: x[1], ascending=False)
 )
 
-# Sort by frequency (descending)
-result = word_count.sortBy(
-    lambda x: x[1],
-    ascending=False
-)
-
-# Display Results and collect into Pandas DataFrame
-print("Word Frequencies:")
-collected_results = result.collect()
-for word, count in collected_results:
+# Display output
+print("\nWord Frequency:\n")
+for word, count in word_count.collect():
     print(f"{word} : {count}")
 
-# Convert collected results to a Pandas DataFrame for plotting
-df_word_freq = pd.DataFrame(collected_results, columns=['word', 'count'])
-
-# spark.stop() # Removed to keep Spark session active for subsequent cells, but now less critical with Pandas DF
+# Stop Spark
+spark.stop()
