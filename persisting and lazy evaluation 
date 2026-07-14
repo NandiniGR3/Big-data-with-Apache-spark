@@ -1,0 +1,40 @@
+from pyspark.sql import SparkSession
+from pyspark import StorageLevel
+from pyspark.sql.functions import col
+
+# Create Spark Session
+spark = SparkSession.builder \
+    .appName("Persist Example") \
+    .master("local[*]") \
+    .getOrCreate()
+
+# Read CSV file
+df = spark.read.csv(
+    "employees.csv",
+    header=True,
+    inferSchema=True
+)
+
+# Lazy Transformation
+high_salary = df.filter(col("Salary") > 40000)
+
+print("Transformation created.")
+print("No execution yet (Lazy Evaluation).\n")
+
+# Persist DataFrame
+high_salary.persist(StorageLevel.MEMORY_AND_DISK)
+
+print("DataFrame Persisted Successfully.\n")
+
+# Action 1
+high_salary.show()
+
+# Action 2
+print("Total Employees:", high_salary.count())
+
+# Remove Persisted Data
+high_salary.unpersist()
+
+print("\nPersisted Data Cleared.")
+
+spark.stop()
