@@ -1,50 +1,39 @@
-# ==========================================================
-# PROGRAM 4
-# Filter and Transform CSV Dataset using Spark RDD
-#==========================================================
-
 from pyspark.sql import SparkSession
+from pyspark.sql.functions import col
 
 # Create Spark Session
 spark = SparkSession.builder \
-    .appName("Filter and Transform CSV") \
+    .appName("HR Filter Transformation") \
     .master("local[*]") \
     .getOrCreate()
 
-sc = spark.sparkContext
-
-# Read CSV file
-rdd = sc.textFile("employees.csv")
-
-# Remove header
-header = rdd.first()
-data = rdd.filter(lambda row: row != header)
-
-# Split each row
-records = data.map(lambda row: row.split(","))
-
-# Filter employees
-# Age >= 21 and Salary >= 40000
-filtered = records.filter(
-    lambda x: int(x[2]) >= 21 and int(x[3]) >= 40000
+# Load CSV Dataset
+df = spark.read.csv(
+    "WA_Fn-UseC_-HR-Employee-Attrition.csv",
+    header=True,
+    inferSchema=True
 )
 
-# Transform data (Increase Salary by 10%)
-transformed = filtered.map(
-    lambda x: (
-        x[0],                    # ID
-        x[1],                    # Name
-        int(x[2]),               # Age
-        int(x[3]),               # Old Salary
-        round(int(x[3]) * 1.10, 2)  # New Salary
-    )
+# Display Dataset
+df.show()
+
+# Filter employees with Age > 30
+filtered_df = df.filter(col("Age") > 30)
+
+# Transform MonthlyIncome (Increase by 10%)
+transformed_df = filtered_df.withColumn(
+    "UpdatedSalary",
+    col("MonthlyIncome") * 1.10
 )
 
 # Display Result
-print("\nFiltered Employees with Updated Salary\n")
-
-for employee in transformed.collect():
-    print(employee)
+transformed_df.select(
+    "Age",
+    "Department",
+    "JobRole",
+    "MonthlyIncome",
+    "UpdatedSalary"
+).show()
 
 # Stop Spark
 spark.stop()
